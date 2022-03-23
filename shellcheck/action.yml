@@ -1,0 +1,6 @@
+name: 'Shellcheck'
+description: 'Run shellcheck'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
