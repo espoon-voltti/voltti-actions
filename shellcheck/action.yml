@@ -1,6 +1,14 @@
 name: 'Shellcheck'
 description: 'Run shellcheck'
 
+inputs:
+  ignore:
+    description: 'Ignore files (using grep)'
+    required: false
+    default: ''
+
 runs:
   using: 'docker'
   image: 'Dockerfile'
+  args:
+    - ${{ inputs.ignore }}
