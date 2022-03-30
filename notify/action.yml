@@ -5,6 +5,9 @@ inputs:
   webhook_url:
     description: “Slack webhook url”
     required: true
+  message:
+    description: “Message”
+    default: "CI job failed"
 
 runs:
   using: "composite"
@@ -17,13 +20,13 @@ runs:
           payload: |
             {
               "channel": "#slack-testing",
-              "text": "CI ${{ job.status }} - <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.repository }} - ${{ github.ref_name }}>",
+              "text": "${{ inputs.message }} - <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.repository }} - ${{ github.ref_name }}>",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "CI ${{ job.status }}",
+                    "text": "${{ inputs.message }}",
                     "emoji": true
                   }
                 },
@@ -44,7 +47,7 @@ runs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed job>"
+                    "text": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow>"
                   }
                 }
               ]
