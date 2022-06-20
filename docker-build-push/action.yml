@@ -17,10 +17,18 @@ inputs:
     required: true
   AWS_CONFIG:
     description: "AWS config to use"
-    required: true
+    required: false
   AWS_REGION:
     description: "AWS region"
     required: true
+
+  AWS_ROLE_TO_ASSUME:
+    description: "AWS role to use"
+    required: false
+  AWS_PROFILE:
+    description: "AWS profile"
+    required: false
+    default: "voltti-sst" # TODO: remove in next version
 
   registry:
     description: "Image registry host"
@@ -34,7 +42,8 @@ inputs:
     required: false
   build-args:
     description: "Docker build-args. See docker/build-push-action build-args"
-    required: true
+    required: false
+    default: ""
   suffix:
     description: "Tag suffix for images"
     default: null
@@ -50,6 +59,15 @@ inputs:
   push:
     description: "Push images to registry"
     default: true
+  load:
+    description: "Load docker image"
+    default: false
+  dockerfile:
+    description: "Dockerfile path"
+  ecr_type:
+    default: 'ecr'
+    description: "ecr or ecr-public"
+
 
 outputs:
   image:
@@ -74,8 +92,12 @@ runs:
         aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ inputs.AWS_REGION }}
+        role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
+        role-duration-seconds: 1200
+        mask-aws-account-id: false
 
     - name: Write AWS config
+      if: ${{ inputs.AWS_CONFIG }}
       shell: bash
       run: |
         mkdir -p ~/.aws
@@ -83,8 +105,17 @@ runs:
 
     - name: Login to ECR
       shell: bash
+      if: ${{ inputs.AWS_PROFILE }}
+      env:
+        AWS_PROFILE: ${{ inputs.AWS_PROFILE }}
       run: |
-        aws --profile=voltti-sst ecr get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
+        aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
+
+    - name: Login to ECR
+      shell: bash
+      if: ${{ ! inputs.AWS_PROFILE }}
+      run: |
+        aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
@@ -110,6 +141,7 @@ runs:
         push: false
         load: true
         target: ${{ inputs.target }}
+        file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -140,8 +172,10 @@ runs:
       uses: docker/build-push-action@v2
       with:
         context: ${{ inputs.path }}
+        load: ${{ inputs.load }}
         push: ${{ inputs.push }}
         target: ${{ inputs.target }}
+        file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
