@@ -1,0 +1,34 @@
+name: "Install tfenv"
+description: "Install tfenv"
+
+inputs:
+  github_token:
+    description: "configure private ssh for github"
+  version:
+    description: "tfenv version"
+    default: "2.2.3"
+  hash:
+    description: "tfenv package sha256sum"
+    default: "0b42330aeed675ad3e5dd6063dbd1daabecb36180e515cca1c6e105dd7a1fa49"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache tfenv
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.tfenv-${{ inputs.version }}
+        key: ${{ runner.os }}-${{ inputs.version }}
+
+    - name: Install tfenv
+      shell: bash
+      run: |
+        if ! test -d "$HOME/.tfenv-${{ inputs.version }}"; then
+          curl -sfL https://github.com/tfutils/tfenv/archive/refs/tags/v${{ inputs.version }}.tar.gz -o /tmp/tfenv-v${{ inputs.version }}.tar.gz
+          echo "${{ inputs.hash }} /tmp/tfenv-v${{ inputs.version }}.tar.gz" | sha256sum -c -
+          tar xzf /tmp/tfenv-v${{ inputs.version }}.tar.gz -C /tmp
+          mv /tmp/tfenv-${{ inputs.version }} "$HOME/.tfenv-${{ inputs.version }}"
+          rm /tmp/tfenv-v${{ inputs.version }}.tar.gz
+        fi
+        echo "$HOME/.tfenv-${{ inputs.version }}/bin" >> $GITHUB_PATH
