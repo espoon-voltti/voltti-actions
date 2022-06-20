@@ -15,20 +15,12 @@ inputs:
   AWS_SECRET_ACCESS_KEY:
     description: "AWS secret access key used to write to ECR"
     required: true
-  AWS_CONFIG:
-    description: "AWS config to use"
-    required: false
   AWS_REGION:
     description: "AWS region"
     required: true
-
   AWS_ROLE_TO_ASSUME:
-    description: "AWS role to use"
-    required: false
-  AWS_PROFILE:
-    description: "AWS profile"
-    required: false
-    default: "voltti-sst" # TODO: remove in next version
+    description: "AWS config to use"
+    required: true
 
   registry:
     description: "Image registry host"
@@ -50,12 +42,6 @@ inputs:
   target:
     description: "Docker target"
     default: null
-  lint_command:
-    description: "Command used for linting. Example: yarn lint"
-    default: null
-  test_command:
-    description: "Command used for linting. Example: yarn test"
-    default: null
   push:
     description: "Push images to registry"
     default: true
@@ -67,58 +53,91 @@ inputs:
   ecr_type:
     default: 'ecr'
     description: "ecr or ecr-public"
+  docker_cache:
+    default: "type=s3,region=eu-west-1,bucket=voltti-ci-docker-cache" # type=gha
+  cache_from_images:
+    default: ""
+    required: false
 
 
 outputs:
   image:
     description: "Full image name with registry and tag"
     value: ${{ steps.variables.outputs.image }}
+  image_name:
+    description: "Short image name without registry and tag"
+    value: ${{ inputs.name }}
 
 runs:
   using: "composite"
   steps:
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
         username: ${{ inputs.DOCKERHUB_USERNAME }}
         password: ${{ inputs.DOCKERHUB_TOKEN }}
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ inputs.AWS_REGION }}
-        role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
-        role-duration-seconds: 1200
-        mask-aws-account-id: false
-
-    - name: Write AWS config
-      if: ${{ inputs.AWS_CONFIG }}
+    - name: Configure AWS
       shell: bash
       run: |
         mkdir -p ~/.aws
-        echo '${{ inputs.AWS_CONFIG }}' > ~/.aws/config
+        cat << EOF > ~/.aws/config
+        [default]
+        region = ${{ inputs.AWS_REGION }}
+        role_session_name = CI-GHA-voltti
+        role_arn = ${{ inputs.AWS_ROLE_TO_ASSUME }}
+        source_profile = default
+        EOF
+
+        cat << EOF > ~/.aws/credentials
+        [default]
+        aws_access_key_id = ${{ inputs.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key = ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+        EOF
+
+    - name: Set up buildkitd
+      shell: bash
+      run: |
+        docker run -d \
+          --privileged \
+          --name remote-buildkit \
+          -p 1234:1234 \
+          -v "${HOME}/.aws/config:/root/.aws/config:ro" \
+          -v "${HOME}/.aws/credentials:/root/.aws/credentials:ro" \
+          moby/buildkit:master \
+          --addr unix:///run/buildkit/buildkitd.sock \
+          --addr tcp://0.0.0.0:1234
+
+    - name: Cache buildx
+      id: cache-buildx
+      uses: actions/cache@v3
+      with:
+        path: ~/.docker/cli-plugins/docker-buildx
+        key: ${{ runner.os }}-cache-buildx
+
+    - name: Build buildx
+      if: steps.cache-buildx.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        docker buildx bake "https://github.com/docker/buildx.git"
+        mkdir -p ~/.docker/cli-plugins
+        mv ./bin/buildx ~/.docker/cli-plugins/docker-buildx
+
+    - name: Buildx version
+      shell: bash
+      run: |
+        docker buildx version
+
+    - name: Buildx create
+      shell: bash
+      id: buildx-create
+      run: |
+        docker buildx create --driver remote docker-container://remote-buildkit --use
 
     - name: Login to ECR
       shell: bash
-      if: ${{ inputs.AWS_PROFILE }}
-      env:
-        AWS_PROFILE: ${{ inputs.AWS_PROFILE }}
       run: |
         aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
-
-    - name: Login to ECR
-      shell: bash
-      if: ${{ ! inputs.AWS_PROFILE }}
-      run: |
-        aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
 
     - name: Set tag
       if: startsWith(github.ref, 'refs/tags/v')
@@ -133,43 +152,29 @@ runs:
       run: |
         echo ::set-output name=image::${{ inputs.registry }}/${{ inputs.name }}:${{ steps.tag.outputs.name || github.sha }}${{ inputs.suffix || '' }}
 
-    - name: Build
-      if: ${{ inputs.lint_command || inputs.test_command }}
-      uses: docker/build-push-action@v2
-      with:
-        context: ${{ inputs.path }}
-        push: false
-        load: true
-        target: ${{ inputs.target }}
-        file: ${{ inputs.dockerfile }}
-        build-args: ${{ inputs.build-args }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        tags: |
-          ${{ steps.variables.outputs.image }}
-
-    - name: Lint
-      if: ${{ inputs.lint_command }}
-      shell: bash
-      run: docker run --rm --entrypoint "" "${{ steps.variables.outputs.image }}" ${{ inputs.lint_command }} 2>&1 | tee lint-report.txt
-
-    - name: Test
-      if: ${{ inputs.test_command }}
+    - name: Create cache-from
+      id: cache
       shell: bash
       run: |
-        docker run --rm --entrypoint "" "${{ steps.variables.outputs.image }}" ${{ inputs.test_command }} 2>&1 | tee test-report.txt
+        cache_to="${{ inputs.name }}/${{ github.sha }};${{ inputs.name }}/${{ github.ref_name }}"
 
-    - name: Store test results
-      uses: actions/upload-artifact@v3
-      if: always() && (inputs.lint_command || inputs.test_command)
-      with:
-        name: test-results
-        path: "*-report.txt"
-        retention-days: 2
+        cache_from="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.sha }}\n"
+        cache_from+="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.ref_name }}\n"
+        cache_from+="${{ inputs.docker_cache }},name=${{ inputs.name }}/master\n"
 
-    - name: Push
-      if: inputs.push
-      uses: docker/build-push-action@v2
+        if test -n '${{ inputs.cache_from_images }}'; then
+          while IFS= read -r image ; do
+            cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.sha }}\n"
+            cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.ref_name }}\n"
+            cache_from+="${{ inputs.docker_cache }},name=${image}/master\n"
+          done <<< '${{ inputs.cache_from_images }}'
+        fi
+
+        echo ::set-output "name=from::\"${cache_from}\""
+        echo ::set-output "name=to::${cache_to}"
+
+    - name: Build image
+      uses: docker/build-push-action@v3
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
@@ -177,7 +182,25 @@ runs:
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: ${{ fromJson(steps.cache.outputs.from) }}
+        cache-to: ${{ inputs.docker_cache }},mode=max,name=${{ steps.cache.outputs.to }}
         tags: |
           ${{ steps.variables.outputs.image }}
+
+    - name: Cleanup buildx
+      if: always()
+      shell: bash
+      run: |
+        docker buildx stop
+
+    - name: Cleanup buildkit
+      if: always()
+      shell: bash
+      run: |
+        docker rm -f remote-buildkit
+
+    - name: Cleanup aws
+      if: always()
+      shell: bash
+      run: |
+        rm -rf ~/.aws
