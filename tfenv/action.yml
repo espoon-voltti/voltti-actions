@@ -2,8 +2,6 @@ name: "Install tfenv"
 description: "Install tfenv"
 
 inputs:
-  github_token:
-    description: "configure private ssh for github"
   version:
     description: "tfenv version"
     default: "2.2.3"
