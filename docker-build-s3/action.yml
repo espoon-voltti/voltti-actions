@@ -1,0 +1,219 @@
+name: "Build and push docker"
+description: "Build and push docker image"
+
+inputs:
+  DOCKERHUB_USERNAME:
+    description: "Dockerhub username used to read public images"
+    required: true
+  DOCKERHUB_TOKEN:
+    description: "Dockerhub token used to read public images"
+    required: true
+
+  AWS_ACCESS_KEY_ID:
+    description: "AWS access key used to write to ECR"
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: "AWS secret access key used to write to ECR"
+    required: true
+  AWS_REGION:
+    description: "AWS region"
+    required: true
+  AWS_ROLE_TO_ASSUME:
+    description: "AWS config to use"
+    required: true
+
+  registry:
+    description: "Image registry host"
+    required: true
+  name:
+    description: "Name of the image. Example evaka/image"
+    required: true
+  path:
+    description: "Docker context path"
+    default: "."
+    required: false
+  build-args:
+    description: "Docker build-args. See docker/build-push-action build-args"
+    required: false
+    default: ""
+  suffix:
+    description: "Tag suffix for images"
+    default: null
+  target:
+    description: "Docker target"
+    default: null
+  push:
+    description: "Push images to registry"
+    default: true
+  load:
+    description: "Load docker image"
+    default: false
+  dockerfile:
+    description: "Dockerfile path"
+  ecr_type:
+    default: 'ecr'
+    description: "ecr or ecr-public"
+  docker_cache:
+    default: "type=s3,region=eu-west-1,bucket=voltti-ci-docker-cache" # type=gha
+  cache_from_images:
+    default: ""
+    required: false
+  tag_latest:
+    default: ""
+    required: false
+
+
+outputs:
+  image:
+    description: "Full image name with registry and tag"
+    value: ${{ steps.variables.outputs.image }}
+  image_name:
+    description: "Short image name without registry and tag"
+    value: ${{ inputs.name }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ inputs.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.DOCKERHUB_TOKEN }}
+
+    - name: Configure AWS
+      shell: bash
+      run: |
+        mkdir -p ~/.aws
+        cat << EOF > ~/.aws/config
+        [default]
+        region = ${{ inputs.AWS_REGION }}
+        role_session_name = CI-GHA-voltti
+        role_arn = ${{ inputs.AWS_ROLE_TO_ASSUME }}
+        source_profile = default
+        EOF
+
+        cat << EOF > ~/.aws/credentials
+        [default]
+        aws_access_key_id = ${{ inputs.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key = ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+        EOF
+
+    - name: Set up buildkitd
+      shell: bash
+      run: |
+        docker run -d \
+          --privileged \
+          --name remote-buildkit \
+          -p 1234:1234 \
+          -v "${HOME}/.aws/config:/root/.aws/config:ro" \
+          -v "${HOME}/.aws/credentials:/root/.aws/credentials:ro" \
+          moby/buildkit:master \
+          --addr unix:///run/buildkit/buildkitd.sock \
+          --addr tcp://0.0.0.0:1234
+
+    - name: Cache buildx
+      id: cache-buildx
+      uses: actions/cache@v3
+      with:
+        path: ~/.docker/cli-plugins/docker-buildx
+        key: ${{ runner.os }}-cache-buildx
+
+    - name: Build buildx
+      if: steps.cache-buildx.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        docker buildx bake "https://github.com/docker/buildx.git"
+        mkdir -p ~/.docker/cli-plugins
+        mv ./bin/buildx ~/.docker/cli-plugins/docker-buildx
+
+    - name: Buildx version
+      shell: bash
+      run: |
+        docker buildx version
+
+    - name: Buildx create
+      shell: bash
+      id: buildx-create
+      run: |
+        docker buildx create --driver remote docker-container://remote-buildkit --use
+
+    - name: Login to ECR
+      shell: bash
+      run: |
+        aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
+
+    - name: Set tag
+      if: startsWith(github.ref, 'refs/tags/v')
+      id: tag
+      shell: bash
+      run: |
+        echo ::set-output name=name::${GITHUB_REF#refs/tags/}
+
+    - name: Set variables
+      id: variables
+      shell: bash
+      run: |
+        BASE_NAME="${{ inputs.registry }}/${{ inputs.name }}"
+        LATEST_IMAGE=""
+
+        if [ "${{ inputs.tag_latest }}" = "${{ github.ref_name }}" ]; then
+          LATEST_IMAGE="$BASE_NAME:latest${{ inputs.suffix || '' }}"
+        fi
+
+        echo ::set-output name=image::"${BASE_NAME}:${{ steps.tag.outputs.name || github.sha }}${{ inputs.suffix || '' }}"
+        echo ::set-output name=latest_image::"$LATEST_IMAGE"
+
+    - name: Create cache-from
+      id: cache
+      shell: bash
+      run: |
+        cache_to="${{ inputs.name }}/${{ github.sha }};${{ inputs.name }}/${{ github.ref_name }}"
+
+        cache_from="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.sha }}\n"
+        cache_from+="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.ref_name }}\n"
+        cache_from+="${{ inputs.docker_cache }},name=${{ inputs.name }}/master\n"
+
+        if test -n '${{ inputs.cache_from_images }}'; then
+          while IFS= read -r image ; do
+            cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.sha }}\n"
+            cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.ref_name }}\n"
+            cache_from+="${{ inputs.docker_cache }},name=${image}/master\n"
+          done <<< '${{ inputs.cache_from_images }}'
+        fi
+
+        echo ::set-output "name=from::\"${cache_from}\""
+        echo ::set-output "name=to::${cache_to}"
+
+    - name: Build image
+      uses: docker/build-push-action@v3
+      with:
+        context: ${{ inputs.path }}
+        load: ${{ inputs.load }}
+        push: ${{ inputs.push }}
+        target: ${{ inputs.target }}
+        file: ${{ inputs.dockerfile }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: ${{ fromJson(steps.cache.outputs.from) }}
+        cache-to: ${{ inputs.docker_cache }},mode=max,name=${{ steps.cache.outputs.to }}
+        tags: |
+          ${{ steps.variables.outputs.image }}
+          ${{ steps.variables.outputs.latest_image }}
+
+
+    - name: Cleanup buildx
+      if: always()
+      shell: bash
+      run: |
+        docker buildx stop
+
+    - name: Cleanup buildkit
+      if: always()
+      shell: bash
+      run: |
+        docker rm -f remote-buildkit
+
+    - name: Cleanup aws
+      if: always()
+      shell: bash
+      run: |
+        rm -rf ~/.aws
