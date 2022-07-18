@@ -162,6 +162,8 @@ runs:
 
         echo ::set-output name=image::"${BASE_NAME}:${{ steps.tag.outputs.name || github.sha }}${{ inputs.suffix || '' }}"
         echo ::set-output name=latest_image::"$LATEST_IMAGE"
+        BRANCH_TAG=$(echo '${{ github.ref_name }}' | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+        echo ::set-output name=branch_image::"${BASE_NAME}:${BRANCH_TAG}${{ inputs.suffix || '' }}"
 
     - name: Create cache-from
       id: cache
@@ -198,7 +200,7 @@ runs:
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.latest_image }}
-
+          ${{ steps.variables.outputs.branch_image }}
 
     - name: Cleanup buildx
       if: always()
