@@ -75,12 +75,14 @@ runs:
   using: "composite"
   steps:
     - name: Login to Docker Hub
+      if: ${{ !github.event.pull_request.head.repo.fork }}
       uses: docker/login-action@v1
       with:
         username: ${{ inputs.DOCKERHUB_USERNAME }}
         password: ${{ inputs.DOCKERHUB_TOKEN }}
 
     - name: Configure AWS
+      if: ${{ !github.event.pull_request.head.repo.fork }}
       shell: bash
       run: |
         mkdir -p ~/.aws
@@ -138,6 +140,7 @@ runs:
         docker buildx create --driver remote docker-container://remote-buildkit --use
 
     - name: Login to ECR
+      if: ${{ !github.event.pull_request.head.repo.fork }}
       shell: bash
       run: |
         aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
@@ -191,12 +194,12 @@ runs:
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
-        push: ${{ inputs.push }}
+        push: ${{ !github.event.pull_request.head.repo.fork && inputs.push  }}
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
-        cache-from: ${{ fromJson(steps.cache.outputs.from) }}
-        cache-to: ${{ inputs.docker_cache }},mode=max,name=${{ steps.cache.outputs.to }}
+        cache-from: ${{ !github.event.pull_request.head.repo.fork && fromJson(steps.cache.outputs.from || '') }}
+        cache-to: ${{ !github.event.pull_request.head.repo.fork && format('{0},mode=max,name={1}', inputs.docker_cache, steps.cache.outputs.to) || '' }}
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.latest_image }}
@@ -218,4 +221,6 @@ runs:
       if: always()
       shell: bash
       run: |
-        rm -rf ~/.aws
+        if -d ~/.aws; then
+          rm -rf ~/.aws
+        fi
