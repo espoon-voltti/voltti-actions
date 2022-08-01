@@ -81,12 +81,14 @@ runs:
       uses: docker/setup-buildx-action@v1
 
     - name: Login to Docker Hub
+      if: ${{ !github.event.pull_request.head.repo.fork }}
       uses: docker/login-action@v1
       with:
         username: ${{ inputs.DOCKERHUB_USERNAME }}
         password: ${{ inputs.DOCKERHUB_TOKEN }}
 
     - name: Configure AWS credentials
+      if: ${{ !github.event.pull_request.head.repo.fork }}
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
@@ -97,7 +99,7 @@ runs:
         mask-aws-account-id: false
 
     - name: Write AWS config
-      if: ${{ inputs.AWS_CONFIG }}
+      if: ${{ !github.event.pull_request.head.repo.fork && inputs.AWS_CONFIG }}
       shell: bash
       run: |
         mkdir -p ~/.aws
@@ -105,7 +107,7 @@ runs:
 
     - name: Login to ECR
       shell: bash
-      if: ${{ inputs.AWS_PROFILE }}
+      if: ${{ !github.event.pull_request.head.repo.fork && inputs.AWS_PROFILE }}
       env:
         AWS_PROFILE: ${{ inputs.AWS_PROFILE }}
       run: |
@@ -113,7 +115,7 @@ runs:
 
     - name: Login to ECR
       shell: bash
-      if: ${{ ! inputs.AWS_PROFILE }}
+      if: ${{ !github.event.pull_request.head.repo.fork && !inputs.AWS_PROFILE }}
       run: |
         aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
 
@@ -168,7 +170,7 @@ runs:
         retention-days: 2
 
     - name: Push
-      if: inputs.push
+      if: ${{ !github.event.pull_request.head.repo.fork && inputs.push }}
       uses: docker/build-push-action@v2
       with:
         context: ${{ inputs.path }}
