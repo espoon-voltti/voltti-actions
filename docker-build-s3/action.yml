@@ -163,24 +163,27 @@ runs:
           LATEST_IMAGE="$BASE_NAME:latest${{ inputs.suffix || '' }}"
         fi
 
-        echo ::set-output name=image::"${BASE_NAME}:${{ steps.tag.outputs.name || github.sha }}${{ inputs.suffix || '' }}"
+        echo ::set-output name=image::"${BASE_NAME}:${{ steps.tag.outputs.name || github.event.pull_request.head.sha || github.sha }}${{ inputs.suffix || '' }}"
         echo ::set-output name=latest_image::"$LATEST_IMAGE"
-        BRANCH_TAG=$(echo '${{ github.ref_name }}' | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+
+        BRANCH_TAG=$(echo "${BRANCH##*/}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
         echo ::set-output name=branch_image::"${BASE_NAME}:${BRANCH_TAG}${{ inputs.suffix || '' }}"
+      env:
+        BRANCH: ${{ github.head_ref || github.ref_name }}
 
     - name: Create cache-from
       id: cache
       shell: bash
       run: |
-        cache_to="${{ inputs.name }}/${{ github.sha }};${{ inputs.name }}/${{ github.ref_name }}"
+        cache_to="${{ inputs.name }}/${{ github.event.pull_request.head.sha || github.sha }};${{ inputs.name }}/${{ github.ref_name }}"
 
-        cache_from="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.sha }}\n"
+        cache_from="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.event.pull_request.head.sha || github.sha }}\n"
         cache_from+="${{ inputs.docker_cache }},name=${{ inputs.name }}/${{ github.ref_name }}\n"
         cache_from+="${{ inputs.docker_cache }},name=${{ inputs.name }}/master\n"
 
         if test -n '${{ inputs.cache_from_images }}'; then
           while IFS= read -r image ; do
-            cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.sha }}\n"
+            cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.event.pull_request.head.sha || github.sha }}\n"
             cache_from+="${{ inputs.docker_cache }},name=${image}/${{ github.ref_name }}\n"
             cache_from+="${{ inputs.docker_cache }},name=${image}/master\n"
           done <<< '${{ inputs.cache_from_images }}'
