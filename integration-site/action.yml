@@ -31,6 +31,7 @@ runs:
           restore-keys: owasp-cve-cache-
 
       - name: Maven site
+        shell: bash
         run: mvn -s $GITHUB_WORKSPACE/.github/settings.xml site -DskipTests
 
       - name: Upload site reports

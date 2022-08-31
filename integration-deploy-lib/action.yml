@@ -24,5 +24,6 @@ runs:
           restore-keys: v1-dependencies-
 
       - name: Publish to GitHub Maven Packages
+        shell: bash
         run: mvn deploy -s $GITHUB_WORKSPACE/.github/settings.xml
 
