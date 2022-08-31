@@ -48,11 +48,11 @@ runs:
       uses: actions/checkout@v3
       with:
         repository: espoon-voltti/integration-infra
-        token: ${{ input.MVN_REPO_TOKEN }}
+        token: ${{ inputs.MVN_REPO_TOKEN }}
 
     - name: Apply new build to kubernetes
       shell: bash
       run: |
-        cd kubernetes/${{ input.NAME }}
-        aws eks update-kubeconfig --profile ${{ input.AWS_PROFILE }} --name ${{ input.CLUSTER_NAME }}
+        cd kubernetes/${{ inputs.NAME }}
+        aws eks update-kubeconfig --profile ${{ inputs.AWS_PROFILE }} --name ${{ inputs.CLUSTER_NAME }}
         ../../bin/eks-apply.sh
