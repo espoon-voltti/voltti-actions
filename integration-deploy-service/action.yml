@@ -14,6 +14,9 @@ inputs:
   AWS_PROFILE:
     description: "AWS profile"
     required: true
+  AWS_CONFIG:
+    description: "AWS configuration"
+    required: true
   MVN_REPO_TOKEN:
     description: "Token for private Maven repo"
     required: true
@@ -39,7 +42,7 @@ runs:
         ${{ inputs.AWS_SECRET_ACCESS_KEY }}
         ${{ inputs.AWS_REGION }}
         
-        ' | aws configure --profile ${{ inputs.AWS_PROFILE }}
+        ' | aws configure --profile default
 
     - name: Checkout integration-infra repo
       uses: actions/checkout@v3
