@@ -39,7 +39,7 @@ runs:
         ${{ inputs.AWS_SECRET_ACCESS_KEY }}
         ${{ inputs.AWS_REGION }}
         
-        ' | aws configure --profile default
+        ' | aws configure --profile ${{ inputs.AWS_PROFILE }}
 
     - name: Checkout integration-infra repo
       uses: actions/checkout@v3
