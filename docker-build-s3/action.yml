@@ -224,6 +224,6 @@ runs:
       if: always()
       shell: bash
       run: |
-        if -d ~/.aws; then
+        if test -d ~/.aws; then
           rm -rf ~/.aws
         fi
