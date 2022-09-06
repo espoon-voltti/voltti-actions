@@ -1,8 +1,6 @@
 name: "Integration Build"
 description: "Build using Maven"
 
-#inputs:
-
 runs:
   using: "composite"
   steps:

@@ -1,8 +1,6 @@
 name: "Integration Deploy Lib"
 description: "Deploy Lib using Maven"
 
-#inputs:
-
 runs:
   using: "composite"
   steps:

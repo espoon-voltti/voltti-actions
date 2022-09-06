@@ -26,6 +26,18 @@ inputs:
   CLUSTER_NAME:
     description: "Cluster name"
     required: true
+  DEV_KUBECTL_BIN:
+    description: "kubectl version dev"
+    required: false
+  TEST_KUBECTL_BIN:
+    description: "kubectl version test"
+    required: false
+  STAGING_KUBECTL_BIN:
+    description: "kubectl version staging"
+    required: false
+  PROD_KUBECTL_BIN:
+    description: "kubectl version prod"
+    required: false
 
 runs:
   using: "composite"
