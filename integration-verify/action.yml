@@ -20,7 +20,7 @@ runs:
         shell: bash
         run: date +%F > /tmp/owasp-cve-cache-date
 
-      - name: Cache node modules
+      - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: ~/.m2
