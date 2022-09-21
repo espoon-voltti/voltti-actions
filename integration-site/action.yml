@@ -32,7 +32,7 @@ runs:
 
       - name: Maven site
         shell: bash
-        run: mvn -s $GITHUB_WORKSPACE/.github/settings.xml site -DskipTests
+        run: mvn -s "$GITHUB_WORKSPACE/.github/settings.xml" site -DskipTests
 
       - name: Upload site reports
         uses: actions/upload-artifact@v3

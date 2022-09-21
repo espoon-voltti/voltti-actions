@@ -23,5 +23,5 @@ runs:
 
       - name: Publish to GitHub Maven Packages
         shell: bash
-        run: mvn deploy -s $GITHUB_WORKSPACE/.github/settings.xml
+        run: mvn -s "$GITHUB_WORKSPACE/.github/settings.xml" deploy
 

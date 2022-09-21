@@ -23,11 +23,11 @@ runs:
 
     - name: Maven go offline
       shell: bash
-      run: mvn -s $GITHUB_WORKSPACE/.github/settings.xml dependency:go-offline
+      run: mvn -s "$GITHUB_WORKSPACE/.github/settings.xml" dependency:go-offline
 
     - name: Build with Maven
       shell: bash
-      run: mvn -s $GITHUB_WORKSPACE/.github/settings.xml package
+      run: mvn -s "$GITHUB_WORKSPACE/.github/settings.xml" package
 
     - name: Upload test reports
       uses: actions/upload-artifact@v3

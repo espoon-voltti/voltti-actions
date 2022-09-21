@@ -38,7 +38,7 @@ runs:
       - if: steps.owasp-cache.outputs.cache-hit != 'true'
         name: Owasp update
         shell: bash
-        run: mvn -s $GITHUB_WORKSPACE/.github/settings.xml -e org.owasp:dependency-check-maven:update-only
+        run: mvn -s "$GITHUB_WORKSPACE/.github/settings.xml" -e org.owasp:dependency-check-maven:update-only
 
       - if: steps.owasp-cache.outputs.cache-hit != 'true'
         name: Cache owasp update
@@ -50,7 +50,7 @@ runs:
 
       - name: Maven verify
         shell: bash
-        run: mvn -s $GITHUB_WORKSPACE/.github/settings.xml -e verify -DskipTests
+        run: mvn -s "$GITHUB_WORKSPACE/.github/settings.xml" -e verify -DskipTests
 
       - name: Upload dependency check reports
         uses: actions/upload-artifact@v3
