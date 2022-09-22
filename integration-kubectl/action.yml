@@ -1,0 +1,35 @@
+name: "Install kubectl"
+description: "Install used kubectl versions"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache kubectl 1.19.6
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.local/bin/kubectl-1.19.6
+        key: ${{ runner.os }}-1.19.6
+
+    - name: Install kubectl 1.19.6
+      shell: bash
+      run: |
+        mkdir -p $HOME/.local/bin/ && \
+        curl -sfL "https://s3.us-west-2.amazonaws.com/amazon-eks/1.19.6/2021-01-05/bin/linux/amd64/kubectl" -o "$HOME/.local/bin/kubectl-1.19.6" && \
+        echo "08ff68159bbcb844455167abb1d0de75bbfe5ae1b051f81ab060a1988027868a  $HOME/.local/bin/kubectl-1.19.6" | sha256sum -c - && \
+        chmod 755 "$HOME/.local/bin/kubectl-1.19.6"
+
+    - name: Cache kubectl 1.21.2
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.local/bin/kubectl-1.21.2
+        key: ${{ runner.os }}-1.21.2
+
+    - name: Install kubectl 1.21.2
+      shell: bash
+      run: |
+        mkdir -p $HOME/.local/bin/ && \
+        curl -sfL "https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.2/2021-07-05/bin/linux/amd64/kubectl" -o "$HOME/.local/bin/kubectl-1.21.2" && \
+        echo "178aad4c23894ad69781213dfdf170983066e8fab5ea6a05675f1b364977dd57  $HOME/.local/bin/kubectl-1.21.2" | sha256sum -c - && \
+        chmod 755 "$HOME/.local/bin/kubectl-1.21.2"
