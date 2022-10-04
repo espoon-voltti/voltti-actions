@@ -1,0 +1,67 @@
+name: "Run yarn"
+description: "Run yarn commands with version and cache"
+
+inputs:
+  node_version:
+    description: "node version"
+  install_command:
+    description: "Install command"
+    default: "yarn install --frozen-lockfile"
+  command:
+    description: "Command to execute"
+    default: ""
+  lock_file:
+    description: "Path to lockfile"
+    default: "yarn.lock"
+  path:
+    description: "Path"
+    default: "."
+  FONTAWESOME_TOKEN:
+    description: "Fontawesome Token"
+  VERDACCIO_TOKEN:
+    description: "Verdaccio Token"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache dependencies
+      id: dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ inputs.path }}/node_modules
+        key: dependencies-${{ hashFiles(inputs.lock_file) }}
+        restore-keys:
+          dependencies-
+
+    - name: Add .npmrc
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        rm -f .npmrc
+        if test -n "${{ inputs.FONTAWESOME_TOKEN }}"; then
+          cat << EOF >> .npmrc
+        @fortawesome:registry=https://npm.fontawesome.com/
+        //npm.fontawesome.com/:_authToken="${{ inputs.FONTAWESOME_TOKEN }}"
+        EOF
+        fi
+        if test -n "${{ inputs.VERDACCIO_TOKEN }}"; then
+          cat << EOF >> .npmrc
+        @voltti:registry=https://npm.sst.espoon-voltti.fi/
+        //npm.sst.espoon-voltti.fi/:_authToken="${{ inputs.VERDACCIO_TOKEN }}"
+        //npm.sst.espoon-voltti.fi/:always-auth=true
+        EOF
+        fi
+
+    - uses: actions/setup-node@v3
+      with:
+        node-version: ${{ inputs.node_version }}
+
+    - if: ${{ inputs.install_command && steps.dependencies.outputs.cache-hit != 'true' }}
+      working-directory: ${{ inputs.path }}
+      shell: bash
+      run: ${{ inputs.install_command }}
+
+    - if: ${{ inputs.command }}
+      working-directory: ${{ inputs.path }}
+      shell: bash
+      run: ${{ inputs.command }}
