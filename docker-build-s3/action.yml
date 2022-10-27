@@ -58,6 +58,8 @@ inputs:
   cache_from_images:
     default: ""
     required: false
+  cache_to:
+    default: ""
   tag_latest:
     default: ""
     required: false
@@ -203,7 +205,7 @@ runs:
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
         cache-from: ${{ !github.event.pull_request.head.repo.fork && fromJson(steps.cache.outputs.from || '') }}
-        cache-to: ${{ !github.event.pull_request.head.repo.fork && format('{0},mode=max,name={1}', inputs.docker_cache, steps.cache.outputs.to) || '' }}
+        cache-to: ${{ (!github.event.pull_request.head.repo.fork || inputs.cache_to) && format('{0},mode=max,name={1}', inputs.docker_cache, steps.cache.outputs.to) || inputs.cache_to }}
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.latest_image }}
