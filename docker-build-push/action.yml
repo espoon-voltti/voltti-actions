@@ -130,7 +130,13 @@ runs:
       id: variables
       shell: bash
       run: |
+        BASE_NAME="${{ inputs.registry }}/${{ inputs.name }}"
+        BRANCH_TAG=$(echo "${BRANCH##*/}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+        echo "branch_image=${BASE_NAME}:${BRANCH_TAG}${{ inputs.suffix || '' }}" >> $GITHUB_OUTPUT
         echo "image=${{ inputs.registry }}/${{ inputs.name }}:${{ steps.tag.outputs.name || github.sha }}${{ inputs.suffix || '' }}" >> $GITHUB_OUTPUT
+      env:
+        BRANCH: ${{ github.head_ref || github.ref_name }}
+
 
     - name: Build
       if: ${{ inputs.lint_command || inputs.test_command }}
@@ -146,6 +152,8 @@ runs:
         cache-to: type=gha,mode=max
         tags: |
           ${{ steps.variables.outputs.image }}
+          ${{ steps.variables.outputs.branch_image }}
+
 
     - name: Lint
       if: ${{ inputs.lint_command }}
@@ -180,3 +188,4 @@ runs:
         cache-to: type=gha,mode=max
         tags: |
           ${{ steps.variables.outputs.image }}
+          ${{ steps.variables.outputs.branch_image }}
