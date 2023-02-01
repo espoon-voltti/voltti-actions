@@ -64,9 +64,11 @@ inputs:
   dockerfile:
     description: "Dockerfile path"
   ecr_type:
-    default: 'ecr'
     description: "ecr or ecr-public"
-
+    default: 'ecr'
+  platforms:
+    description: "Comma separated list of target platforms"
+    default: 'linux/amd64'
 
 outputs:
   image:
@@ -137,7 +139,6 @@ runs:
       env:
         BRANCH: ${{ github.head_ref || github.ref_name }}
 
-
     - name: Build
       if: ${{ inputs.lint_command || inputs.test_command }}
       uses: docker/build-push-action@v3
@@ -153,7 +154,6 @@ runs:
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.branch_image }}
-
 
     - name: Lint
       if: ${{ inputs.lint_command }}
@@ -186,6 +186,7 @@ runs:
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        platforms: ${{ inputs.platforms }}
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.branch_image }}
