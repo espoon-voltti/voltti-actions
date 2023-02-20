@@ -126,7 +126,7 @@ runs:
       run: |
         docker buildx bake "https://github.com/docker/buildx.git"
         mkdir -p ~/.docker/cli-plugins
-        mv ./bin/buildx ~/.docker/cli-plugins/docker-buildx
+        mv ./bin/build/buildx ~/.docker/cli-plugins/docker-buildx
 
     - name: Buildx version
       shell: bash
