@@ -69,6 +69,9 @@ inputs:
   platforms:
     description: "Comma separated list of target platforms"
     default: 'linux/amd64'
+  pull:
+    description: "Always pull all images"
+    default: 'false'  
 
 outputs:
   image:
@@ -151,6 +154,7 @@ runs:
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        pull: ${{ inputs.pull }}
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.branch_image }}
