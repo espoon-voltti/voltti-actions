@@ -58,6 +58,9 @@ inputs:
   push:
     description: "Push images to registry"
     default: true
+  pull:
+    description: "Allways pull images"
+    default: false
   load:
     description: "Load docker image"
     default: false
@@ -69,9 +72,6 @@ inputs:
   platforms:
     description: "Comma separated list of target platforms"
     default: 'linux/amd64'
-  pull:
-    description: "Always pull all images"
-    default: 'false'  
 
 outputs:
   image:
@@ -148,13 +148,13 @@ runs:
       with:
         context: ${{ inputs.path }}
         push: false
+        pull: ${{ inputs.pull }}
         load: true
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        pull: ${{ inputs.pull }}
         tags: |
           ${{ steps.variables.outputs.image }}
           ${{ steps.variables.outputs.branch_image }}
@@ -185,6 +185,7 @@ runs:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
         push: ${{ inputs.push }}
+        pull: ${{ inputs.pull }}
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
