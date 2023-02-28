@@ -25,6 +25,10 @@ inputs:
   registry:
     description: "Image registry host"
     required: true
+  public_registry:
+    description: "Extra public registry host"
+    required: false
+    default: ""
   name:
     description: "Name of the image. Example evaka/image"
     required: true
@@ -66,7 +70,7 @@ inputs:
 outputs:
   image:
     description: "Full image name with registry and tag"
-    value: ${{ steps.variables.outputs.image }}
+    value: "${{ inputs.registry }}/${{ inputs.name }}:${{ github.event.pull_request.head.sha || github.sha }}"
   image_name:
     description: "Short image name without registry and tag"
     value: ${{ inputs.name }}
@@ -145,6 +149,12 @@ runs:
       run: |
         aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
 
+    - name: Login to public ECR
+      if: ${{ !github.event.pull_request.head.repo.fork && inputs.public_registry }}
+      shell: bash
+      run: |
+        aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ inputs.public_registry }}
+
     - name: Set tag
       if: startsWith(github.ref, 'refs/tags/v')
       id: tag
@@ -152,25 +162,20 @@ runs:
       run: |
         echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Set variables
-      id: variables
-      shell: bash
-      run: |
-        BASE_NAME="${{ inputs.registry }}/${{ inputs.name }}"
-        LATEST_IMAGE=""
-
-        if [ "${{ inputs.tag_latest }}" = "${{ github.ref_name }}" ]; then
-          LATEST_IMAGE="$BASE_NAME:latest${{ inputs.suffix || '' }}"
-        fi
-
-        echo "image=${BASE_NAME}:${{ steps.tag.outputs.name || github.event.pull_request.head.sha || github.sha }}${{ inputs.suffix || '' }}" >> $GITHUB_OUTPUT
-        echo "latest_image=$LATEST_IMAGE" >> $GITHUB_OUTPUT
-
-        BRANCH_TAG=$(echo "${BRANCH##*/}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
-        echo "branch_image=${BASE_NAME}:${BRANCH_TAG}${{ inputs.suffix || '' }}" >> $GITHUB_OUTPUT
-
+    - name: Docker meta
+      id: meta
       env:
-        BRANCH: ${{ github.head_ref || github.ref_name }}
+        DOCKER_METADATA_PR_HEAD_SHA: "true"
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          "${{ inputs.registry }}/${{ inputs.name }}"
+          ${{ inputs.public_registry && format('{0}/{1}', inputs.public_registry, inputs.name) }}
+        tags: |
+          type=ref,event=branch
+          type=sha,format=long,prefix=
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
 
     - name: Create cache-from
       id: cache
@@ -204,10 +209,8 @@ runs:
         build-args: ${{ inputs.build-args }}
         cache-from: ${{ !github.event.pull_request.head.repo.fork && fromJson(steps.cache.outputs.from || '') }}
         cache-to: ${{ !github.event.pull_request.head.repo.fork && format('{0},mode=max,name={1}', inputs.docker_cache, steps.cache.outputs.to) || '' }}
-        tags: |
-          ${{ steps.variables.outputs.image }}
-          ${{ steps.variables.outputs.latest_image }}
-          ${{ steps.variables.outputs.branch_image }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
 
     - name: Cleanup buildx
       if: always()
