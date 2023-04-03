@@ -58,14 +58,13 @@ inputs:
     default: 'ecr'
     description: "ecr or ecr-public"
   docker_cache:
-    default: "type=s3,region=eu-west-1,bucket=voltti-ci-docker-cache" # type=gha
+    default: "type=gha"
   cache_from_images:
     default: ""
     required: false
   tag_latest:
     default: ""
     required: false
-
 
 outputs:
   image:
