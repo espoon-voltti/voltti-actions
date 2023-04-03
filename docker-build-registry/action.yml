@@ -1,0 +1,92 @@
+name: "Build and push docker"
+description: "Build and push docker image"
+
+inputs:
+  registry:
+    description: "Image registry host"
+    required: true
+  public_registry_prefix:
+    description: "Extra public registry host"
+    default: "ghcr.io/espoon-voltti"
+
+  name:
+    description: "Name of the image. Example evaka/image"
+    required: true
+  cache_from:
+    description: "Get cache from this image."
+    default: ""
+    required: false
+  path:
+    description: "Docker context path"
+    default: "."
+    required: false
+  build-args:
+    description: "Docker build-args. See docker/build-push-action build-args"
+    required: false
+    default: ""
+  target:
+    description: "Docker target"
+    default: null
+  push:
+    description: "Push images to registry"
+    default: true
+  load:
+    description: "Load docker image"
+    default: false
+  dockerfile:
+    description: "Dockerfile path"
+  no_sha:
+    default: false
+
+outputs:
+  image:
+    description: "Full image name with registry and tag"
+    value: "${{ inputs.registry }}/${{ inputs.name }}:${{ github.event.pull_request.head.sha || github.sha }}"
+  image_name:
+    description: "Short image name without registry and tag"
+    value: ${{ inputs.name }}
+  image_cache:
+    description: "Image cache name"
+    value: ${{ steps.image.outputs.cache }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Docker metadata
+      id: metadata
+      env:
+        DOCKER_METADATA_PR_HEAD_SHA: "true"
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          ${{ inputs.public_registry_prefix }}/${{ inputs.name }}
+          ${{ inputs.registry }}/${{ inputs.name }}
+        tags: |
+          type=ref,event=pr
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          ${{ inputs.no_sha == 'false' && 'type=sha,format=long,prefix=' || '' }}
+
+    - name: Set output
+      shell: bash
+      id: image
+      run: echo "cache=${{ fromJSON(steps.metadata.outputs.json).tags[0] }}" >> "$GITHUB_OUTPUT"
+
+    - name: Build image
+      uses: docker/build-push-action@v3
+      with:
+        context: ${{ inputs.path }}
+        load: ${{ inputs.load }}
+        push: ${{ !github.event.pull_request.head.repo.fork && inputs.push }}
+        target: ${{ inputs.target }}
+        file: ${{ inputs.dockerfile }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: |
+          ${{ inputs.cache_from != '' && format('type=registry,ref={0}', inputs.cache_from) || '' }}
+          ${{ format('type=registry,ref={0}', steps.image.outputs.cache) }}
+          ${{ format('type=registry,ref={0}/{1}:master', inputs.public_registry_prefix, inputs.name) }}
+        cache-to: |
+          ${{ format('type=registry,mode=max,ref={0}', steps.image.outputs.cache) }}
+        tags: ${{ steps.metadata.outputs.tags }}
+        labels: ${{ steps.metadata.outputs.labels }}

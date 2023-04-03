@@ -1,0 +1,17 @@
+name: "Build and push docker"
+description: "Build and push docker image"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cleanup buildx
+      if: always()
+      shell: bash
+      run: |
+        docker buildx stop || true
+
+    - name: Cleanup buildkit
+      if: always()
+      shell: bash
+      run: |
+        docker rm -f remote-buildkit || true
