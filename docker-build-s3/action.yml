@@ -113,7 +113,7 @@ runs:
           -p 1234:1234 \
           -v "${HOME}/.aws/config:/root/.aws/config:ro" \
           -v "${HOME}/.aws/credentials:/root/.aws/credentials:ro" \
-          moby/buildkit:master \
+          moby/buildkit:v0.11.5 \
           --addr unix:///run/buildkit/buildkitd.sock \
           --addr tcp://0.0.0.0:1234
 
