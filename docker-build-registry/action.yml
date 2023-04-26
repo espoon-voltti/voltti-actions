@@ -35,8 +35,6 @@ inputs:
     default: false
   dockerfile:
     description: "Dockerfile path"
-  no_sha:
-    default: false
 
 outputs:
   image:
@@ -66,7 +64,7 @@ runs:
           type=ref,event=branch
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          ${{ inputs.no_sha == 'false' && 'type=sha,format=long,prefix=' || '' }}
+          type=sha,format=long,prefix=
 
     - name: Set output
       shell: bash
