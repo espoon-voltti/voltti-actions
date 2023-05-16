@@ -141,7 +141,7 @@ runs:
 
     - name: Build
       if: ${{ inputs.lint_command || inputs.test_command }}
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: ${{ inputs.path }}
         push: false
@@ -176,7 +176,7 @@ runs:
 
     - name: Push
       if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork && inputs.push }}
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}

@@ -199,7 +199,7 @@ runs:
         echo "to=${cache_to}" >> $GITHUB_OUTPUT
 
     - name: Build image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
