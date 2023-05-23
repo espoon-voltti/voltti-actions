@@ -65,24 +65,9 @@ runs:
           -p 1234:1234 \
           -v "${HOME}/.aws/config:/root/.aws/config:ro" \
           -v "${HOME}/.aws/credentials:/root/.aws/credentials:ro" \
-          moby/buildkit:v0.11.5 \
+          moby/buildkit:v0.11.6 \
           --addr unix:///run/buildkit/buildkitd.sock \
           --addr tcp://0.0.0.0:1234
-
-    - name: Cache buildx
-      id: cache-buildx
-      uses: actions/cache@v3
-      with:
-        path: ~/.docker/cli-plugins/docker-buildx
-        key: ${{ runner.os }}-cache-buildx
-
-    - name: Build buildx
-      if: steps.cache-buildx.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        docker buildx bake "https://github.com/docker/buildx.git"
-        mkdir -p ~/.docker/cli-plugins
-        mv ./bin/build/buildx ~/.docker/cli-plugins/docker-buildx
 
     - name: Buildx version
       shell: bash
