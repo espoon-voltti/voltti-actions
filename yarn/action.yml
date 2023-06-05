@@ -20,6 +20,8 @@ inputs:
     description: "Fontawesome Token"
   VERDACCIO_TOKEN:
     description: "Verdaccio Token"
+  GITHUB_TOKEN:
+    description: "Github token"
 
 runs:
   using: "composite"
@@ -49,6 +51,13 @@ runs:
         @voltti:registry=https://npm.sst.espoon-voltti.fi/
         //npm.sst.espoon-voltti.fi/:_authToken="${{ inputs.VERDACCIO_TOKEN }}"
         //npm.sst.espoon-voltti.fi/:always-auth=true
+        EOF
+        fi
+        if test -n "${{ inputs.GITHUB_TOKEN }}"; then
+          cat << EOF >> .npmrc
+        @espoon-voltti:registry=https://npm.pkg.github.com/
+        //npm.pkg.github.com/:always-auth=true
+        //npm.pkg.github.com/:_authToken=${{ inputs.GITHUB_TOKEN }}
         EOF
         fi
 
