@@ -14,8 +14,11 @@ inputs:
     description: "Path to lockfile"
     default: "yarn.lock"
   path:
-    description: "Path"
+    description: "Path to project"
     default: "."
+  use_cache:
+    description: "Set to 'false' to disable cache"
+    default: "true"
   FONTAWESOME_TOKEN:
     description: "Fontawesome Token"
   VERDACCIO_TOKEN:
@@ -27,6 +30,7 @@ runs:
   using: "composite"
   steps:
     - name: Cache dependencies
+      if: inputs.use_cache == 'true'
       id: dependencies
       uses: actions/cache@v3
       with:
@@ -55,7 +59,7 @@ runs:
         fi
         if test -n "${{ inputs.GITHUB_TOKEN }}"; then
           cat << EOF >> .npmrc
-        @espoon-voltti:registry=https://npm.pkg.github.com/
+        @espoon-voltti:registry=https://npm.pkg.github.com
         //npm.pkg.github.com/:always-auth=true
         //npm.pkg.github.com/:_authToken=${{ inputs.GITHUB_TOKEN }}
         EOF
