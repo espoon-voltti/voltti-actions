@@ -90,7 +90,7 @@ runs:
 
     - name: Configure AWS credentials
       if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
-      uses: aws-actions/configure-aws-credentials@v1-node16
+      uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
