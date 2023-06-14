@@ -36,6 +36,14 @@ inputs:
   dockerfile:
     description: "Dockerfile path"
 
+  tcpdump:
+    description: "Enable TCPdump capture during push. Requires tcpdump_password"
+    default: 'false'
+    required: false
+  tcpdump_password:
+    description: "Password for TCPdump"
+    required: false
+
 outputs:
   image:
     description: "Full image name with registry and tag"
@@ -71,6 +79,13 @@ runs:
       id: image
       run: echo "cache=${{ fromJSON(steps.metadata.outputs.json).tags[0] }}" >> "$GITHUB_OUTPUT"
 
+    - name: Start TCPdump in the background
+      if: inputs.tcpdump == 'true'
+      shell: bash
+      run: |
+        echo "start_tcp_dump=true" >> "$GITHUB_ENV"
+        sudo tcpdump -i eth0 -w dump.pcap &
+
     - name: Build image
       uses: docker/build-push-action@v4
       with:
@@ -88,3 +103,20 @@ runs:
           ${{ format('type=registry,mode=max,ref={0}', steps.image.outputs.cache) }}
         tags: ${{ steps.metadata.outputs.tags }}
         labels: ${{ steps.metadata.outputs.labels }}
+
+    - name: Stop TCPdump
+      if: (success() || failure()) && env.start_tcp_dump == 'true'
+      shell: bash
+      run: sudo killall tcpdump
+
+    - name: Upload TCPdump packet capture file
+      if: failure() && env.start_tcp_dump == 'true'
+      shell: bash
+      run: echo "${{ inputs.tcpdump_password }}" | gpg --passphrase-fd 0 --batch --yes --symmetric --cipher-algo AES256 "dump.pcap"
+
+    - name: Upload TCPdump packet capture file
+      if: failure() && env.start_tcp_dump == 'true'
+      uses: actions/upload-artifact@v2
+      with:
+        name: dump.pcap.gpg
+        path: dump.pcap.gpg
