@@ -112,11 +112,13 @@ runs:
     - name: Upload TCPdump packet capture file
       if: failure() && env.start_tcp_dump == 'true'
       shell: bash
-      run: echo "${{ inputs.tcpdump_password }}" | gpg --passphrase-fd 0 --batch --yes --symmetric --cipher-algo AES256 "dump.pcap"
+      run: |
+        gzip -9 dump.pcap
+        echo "${{ inputs.tcpdump_password }}" | gpg --passphrase-fd 0 --batch --yes --symmetric --cipher-algo AES256 "dump.pcap.gz"
 
     - name: Upload TCPdump packet capture file
       if: failure() && env.start_tcp_dump == 'true'
       uses: actions/upload-artifact@v2
       with:
-        name: dump.pcap.gpg
-        path: dump.pcap.gpg
+        name: dump.pcap.gz.gpg
+        path: dump.pcap.gz.gpg
