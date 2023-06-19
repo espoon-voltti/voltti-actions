@@ -118,7 +118,7 @@ runs:
 
     - name: Upload TCPdump packet capture file
       if: failure() && env.start_tcp_dump == 'true'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: dump.pcap.gz.gpg
         path: dump.pcap.gz.gpg
