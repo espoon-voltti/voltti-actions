@@ -26,19 +26,19 @@ inputs:
     default: ""
   target:
     description: "Docker target"
-    default: "null"
+    default: null
   push:
     description: "Push images to registry"
-    default: "true"
+    default: true
   load:
     description: "Load docker image"
-    default: "false"
+    default: false
   dockerfile:
     description: "Dockerfile path"
 
   tcpdump:
     description: "Enable TCPdump capture during push. Requires tcpdump_password"
-    default: "false"
+    default: false
     required: false
   tcpdump_password:
     description: "Password for TCPdump"
