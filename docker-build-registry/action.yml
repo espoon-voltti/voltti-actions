@@ -38,7 +38,7 @@ inputs:
 
   tcpdump:
     description: "Enable TCPdump capture during push. Requires tcpdump_password"
-    default: 'false'
+    default: false
     required: false
   tcpdump_password:
     description: "Password for TCPdump"
@@ -68,6 +68,8 @@ runs:
           ${{ inputs.public_registry_prefix }}/${{ inputs.name }}
           ${{ inputs.registry }}/${{ inputs.name }}
         tags: |
+          type=edge,branch=master
+          type=ref,event=tag
           type=ref,event=pr,prefix=cache-pr-
           type=ref,event=branch,prefix=cache-
           type=semver,pattern={{version}}
