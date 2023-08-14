@@ -65,13 +65,14 @@ runs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          ${{ inputs.public_registry_prefix }}/${{ inputs.name }}
+          ${{ inputs.public_registry_prefix && format('{0}/{1}', inputs.public_registry_prefix, inputs.name) || '' }}
           ${{ inputs.registry }}/${{ inputs.name }}
         tags: |
-          type=edge,branch=master
-          type=ref,event=tag
           type=ref,event=pr,prefix=cache-pr-
           type=ref,event=branch,prefix=cache-
+          type=ref,event=tag,prefix=cache-
+          type=edge,branch=master
+          type=ref,event=tag
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=sha,format=long,prefix=
@@ -100,7 +101,7 @@ runs:
         cache-from: |
           ${{ inputs.cache_from != '' && format('type=registry,ref={0}', inputs.cache_from) || '' }}
           ${{ format('type=registry,ref={0}', steps.image.outputs.cache) }}
-          ${{ format('type=registry,ref={0}/{1}:cache-master', inputs.public_registry_prefix, inputs.name) }}
+          ${{ inputs.public_registry_prefix && format('type=registry,ref={0}/{1}:cache-master', inputs.public_registry_prefix, inputs.name) || '' }}
         cache-to: |
           ${{ format('type=registry,mode=max,ref={0}', steps.image.outputs.cache) }}
         tags: ${{ steps.metadata.outputs.tags }}
