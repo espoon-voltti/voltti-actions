@@ -80,7 +80,7 @@ runs:
     - name: Set output
       shell: bash
       id: image
-      run: echo "cache=${{ fromJSON(steps.metadata.outputs.json).tags[0] }}" >> "$GITHUB_OUTPUT"
+      run: echo "cache=$(echo "$DOCKER_METADATA_OUTPUT_TAGS" | grep ":cache-" | head -n 1 )" >> "$GITHUB_OUTPUT"
 
     - name: Start TCPdump in the background
       if: inputs.tcpdump == 'true'
