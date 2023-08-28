@@ -89,6 +89,8 @@ runs:
       if: ${{ !github.event.pull_request.head.repo.fork && inputs.AWS == 'true' }}
       id: ecr
       uses: aws-actions/amazon-ecr-login@v1
+      with:
+        mask-password: 'true'
 
     - name: Login to GitHub Container Registry
       if: ${{ !github.event.pull_request.head.repo.fork }}
