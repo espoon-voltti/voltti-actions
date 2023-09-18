@@ -19,7 +19,7 @@ runs:
       with:
           payload: |
             {
-              "channel": "#slack-testing",
+              "channel": "#ci",
               "text": "${{ inputs.message }} - <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.repository }} - ${{ github.ref_name }}>",
               "blocks": [
                 {
