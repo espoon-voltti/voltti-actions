@@ -8,18 +8,21 @@ inputs:
   message:
     description: “Message”
     default: "CI job failed"
+  channel:
+    description: "Slack channel"
+    default: "#ci"
 
 runs:
   using: "composite"
   steps:
-    - uses: slackapi/slack-github-action@v1.18.0
+    - uses: slackapi/slack-github-action@v1.24.0
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.webhook_url }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
       with:
           payload: |
             {
-              "channel": "#ci",
+              "channel": "${{ inputs.channel }}",
               "text": "${{ inputs.message }} - <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.repository }} - ${{ github.ref_name }}>",
               "blocks": [
                 {
