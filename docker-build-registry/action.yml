@@ -58,8 +58,8 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Docker metadata
-      id: metadata
+    - name: Docker metadata for cache
+      id: cache
       env:
         DOCKER_METADATA_PR_HEAD_SHA: "true"
       uses: docker/metadata-action@v4
@@ -71,6 +71,29 @@ runs:
           type=ref,event=pr,prefix=cache-pr-
           type=ref,event=branch,prefix=cache-
           type=ref,event=tag,prefix=cache-
+
+    - name: Docker metadata for cache sha
+      id: cache_sha
+      env:
+        DOCKER_METADATA_PR_HEAD_SHA: "true"
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          ${{ inputs.public_registry_prefix && format('{0}/{1}', inputs.public_registry_prefix, inputs.name) || '' }}
+          ${{ inputs.registry }}/${{ inputs.name }}
+        tags: |
+          type=sha,format=long,prefix=cache-
+
+    - name: Docker metadata
+      id: metadata
+      env:
+        DOCKER_METADATA_PR_HEAD_SHA: "true"
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          ${{ inputs.public_registry_prefix && format('{0}/{1}', inputs.public_registry_prefix, inputs.name) || '' }}
+          ${{ inputs.registry }}/${{ inputs.name }}
+        tags: |
           type=edge,branch=master
           type=ref,event=tag
           type=semver,pattern={{version}}
@@ -80,7 +103,9 @@ runs:
     - name: Set output
       shell: bash
       id: image
-      run: echo "cache=${{ fromJSON(steps.metadata.outputs.json).tags[0] }}" >> "$GITHUB_OUTPUT"
+      run: |
+        echo "cache=${{ fromJSON(steps.cache.outputs.json).tags[0] }}" >> "$GITHUB_OUTPUT"
+        echo "cache_commit=${{ fromJSON(steps.cache_sha.outputs.json).tags[0] }}" >> "$GITHUB_OUTPUT"
 
     - name: Start TCPdump in the background
       if: inputs.tcpdump == 'true'
@@ -104,6 +129,7 @@ runs:
           ${{ inputs.public_registry_prefix && format('type=registry,ref={0}/{1}:cache-master', inputs.public_registry_prefix, inputs.name) || '' }}
         cache-to: |
           ${{ format('type=registry,mode=max,ref={0}', steps.image.outputs.cache) }}
+          ${{ format('type=registry,mode=max,ref={0}', steps.image.outputs.cache_commit) }}
         tags: ${{ steps.metadata.outputs.tags }}
         labels: ${{ steps.metadata.outputs.labels }}
 
