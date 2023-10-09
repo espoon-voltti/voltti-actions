@@ -30,11 +30,17 @@ inputs:
   push:
     description: "Push images to registry"
     default: true
+  pull:
+    description: "Pull images on build"
+    default: "false"
   load:
     description: "Load docker image"
     default: false
   dockerfile:
     description: "Dockerfile path"
+  metadata_tags:
+    description: "Extra lines for metadata-action tags"
+    default: ""
 
   tcpdump:
     description: "Enable TCPdump capture during push. Requires tcpdump_password"
@@ -76,6 +82,7 @@ runs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=sha,format=long,prefix=
+          ${{ inputs.metadata_tags }}
 
     - name: Set output
       shell: bash
@@ -90,11 +97,12 @@ runs:
         sudo tcpdump -i eth0 -w dump.pcap &
 
     - name: Build image
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v5
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
         push: ${{ !github.event.pull_request.head.repo.fork && inputs.push }}
+        pull: "${{ inputs.pull }}"
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
