@@ -24,6 +24,10 @@ inputs:
     description: "Docker build-args. See docker/build-push-action build-args"
     required: false
     default: ""
+  build-contexts:
+    description: "Docker build-contexts. See docker/build-push-action build-contexts"
+    required: false
+    default: ""
   target:
     description: "Docker target"
     default: null
@@ -41,7 +45,6 @@ inputs:
   metadata_tags:
     description: "Extra lines for metadata-action tags"
     default: ""
-
   tcpdump:
     description: "Enable TCPdump capture during push. Requires tcpdump_password"
     default: false
@@ -106,6 +109,7 @@ runs:
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
+        build-contexts: ${{ inputs.build-contexts }}
         cache-from: |
           ${{ inputs.cache_from != '' && format('type=registry,ref={0}', inputs.cache_from) || '' }}
           ${{ format('type=registry,ref={0}', steps.image.outputs.cache) }}
