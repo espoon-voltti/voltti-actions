@@ -32,7 +32,7 @@ runs:
     - name: Cache dependencies
       if: inputs.use_cache == 'true'
       id: dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}/node_modules
         key: dependencies-${{ hashFiles(inputs.lock_file) }}
@@ -65,7 +65,7 @@ runs:
         EOF
         fi
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node_version }}
 
