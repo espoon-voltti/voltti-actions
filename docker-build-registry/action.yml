@@ -71,7 +71,7 @@ runs:
       id: metadata
       env:
         DOCKER_METADATA_PR_HEAD_SHA: "true"
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@v5
       with:
         images: |
           ${{ inputs.public_registry_prefix && format('{0}/{1}', inputs.public_registry_prefix, inputs.name) || '' }}
@@ -133,7 +133,7 @@ runs:
 
     - name: Upload TCPdump packet capture file
       if: failure() && env.start_tcp_dump == 'true'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dump.pcap.gz.gpg
         path: dump.pcap.gz.gpg
