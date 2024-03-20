@@ -7,7 +7,7 @@ inputs:
     required: true
   public_registry_prefix:
     description: "Extra public registry host"
-    default: "ghcr.io/espoon-voltti"
+    default: "ghcr.io/${{ github.repository_owner }}"
 
   name:
     description: "Name of the image. Example evaka/image"
@@ -104,7 +104,7 @@ runs:
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
-        push: ${{ !github.event.pull_request.head.repo.fork && inputs.push }}
+        push: ${{ inputs.push }}
         pull: "${{ inputs.pull }}"
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
