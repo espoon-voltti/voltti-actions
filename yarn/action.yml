@@ -16,6 +16,9 @@ inputs:
   path:
     description: "Path to project"
     default: "."
+  cache_key:
+    description: "Specify cache key"
+    default: "dependencies"
   use_cache:
     description: "Set to 'false' to disable cache"
     default: "true"
@@ -35,7 +38,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}/node_modules
-        key: dependencies-${{ hashFiles(inputs.lock_file) }}
+        key: ${{ inputs.cache_key }}-${{ hashFiles(inputs.lock_file) }}
         restore-keys:
           dependencies-
 
