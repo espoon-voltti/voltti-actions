@@ -52,6 +52,9 @@ inputs:
   tcpdump_password:
     description: "Password for TCPdump"
     required: false
+  provenance:
+    description: "Set provenance for docker build"
+    default: false
 
 outputs:
   image:
@@ -110,6 +113,7 @@ runs:
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
         build-contexts: ${{ inputs.build-contexts }}
+        provenance: ${{ inputs.provenance }}
         cache-from: |
           ${{ inputs.cache_from != '' && format('type=registry,ref={0}', inputs.cache_from) || '' }}
           ${{ format('type=registry,ref={0}', steps.image.outputs.cache) }}
