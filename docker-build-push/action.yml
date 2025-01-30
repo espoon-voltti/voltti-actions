@@ -15,9 +15,6 @@ inputs:
   AWS_SECRET_ACCESS_KEY:
     description: "AWS secret access key used to write to ECR"
     required: true
-  AWS_CONFIG:
-    description: "AWS config to use"
-    required: false
   AWS_REGION:
     description: "AWS region"
     required: true
@@ -58,6 +55,9 @@ inputs:
   push:
     description: "Push images to registry"
     default: true
+  pull:
+    description: "Pull images on build"
+    default: "false"
   load:
     description: "Load docker image"
     default: false
@@ -95,19 +95,10 @@ runs:
       if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ inputs.AWS_REGION }}
         role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
         role-duration-seconds: 1200
         mask-aws-account-id: false
-
-    - name: Write AWS config
-      if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork && inputs.AWS_CONFIG }}
-      shell: bash
-      run: |
-        mkdir -p ~/.aws
-        echo '${{ inputs.AWS_CONFIG }}' > ~/.aws/config
 
     - name: Login to ECR
       shell: bash
@@ -148,6 +139,7 @@ runs:
       with:
         context: ${{ inputs.path }}
         push: false
+        pull: "${{ inputs.pull }}"
         load: true
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
@@ -184,6 +176,7 @@ runs:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
         push: ${{ inputs.push }}
+        pull: "${{ inputs.pull }}"
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
