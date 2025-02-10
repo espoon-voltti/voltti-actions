@@ -9,21 +9,11 @@ inputs:
     description: "Dockerhub token used to read public images"
     required: true
 
-  AWS_ACCESS_KEY_ID:
-    description: "AWS access key used to write to ECR"
-    required: true
-  AWS_SECRET_ACCESS_KEY:
-    description: "AWS secret access key used to write to ECR"
-    required: true
   AWS_REGION:
     description: "AWS region"
     required: true
-
   AWS_ROLE_TO_ASSUME:
     description: "AWS role to use"
-    required: false
-  AWS_PROFILE:
-    description: "AWS profile"
     required: false
 
   registry:
@@ -102,13 +92,7 @@ runs:
 
     - name: Login to ECR
       shell: bash
-      if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork && inputs.AWS_PROFILE }}
-      run: |
-        aws --profile="${{ inputs.AWS_PROFILE }}" ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
-
-    - name: Login to ECR
-      shell: bash
-      if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork && !inputs.AWS_PROFILE }}
+      if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
       run: |
         aws ${{ inputs.ecr_type }} get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ inputs.registry }}
 
@@ -176,7 +160,6 @@ runs:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
         push: ${{ inputs.push }}
-        pull: "${{ inputs.pull }}"
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}

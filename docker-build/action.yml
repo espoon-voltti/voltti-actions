@@ -37,6 +37,9 @@ inputs:
   push:
     description: "Push images to registry"
     default: true
+  pull:
+    description: "Pull images on build"
+    default: "false"
   load:
     description: "Load docker image"
     default: false
@@ -97,13 +100,14 @@ runs:
           type=ref,event=branch
           type=sha,format=long,prefix=
 
-    - name: Push
+    - name: Build and push
       if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
       uses: docker/build-push-action@v5
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
         push: ${{ inputs.push }}
+        pull: ${{ inputs.pull }}
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
