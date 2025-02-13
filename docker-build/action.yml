@@ -55,7 +55,7 @@ inputs:
 outputs:
   image:
     description: "Full image name with registry and tag"
-    value: "${{ steps.ecr.outputs.registry }}/${{ inputs.name }}:${{ github.event.pull_request.head.sha || github.sha }}"
+    value: "${{ steps.ecr.outputs.registry || 'localhost' }}/${{ inputs.name }}:${{ github.event.pull_request.head.sha || github.sha }}"
 
 runs:
   using: "composite"
@@ -94,7 +94,7 @@ runs:
       uses: docker/metadata-action@v5
       with:
         images: |
-          ${{ steps.ecr.outputs.registry }}/${{ inputs.name }}
+          ${{ steps.ecr.outputs.registry || 'localhost' }}/${{ inputs.name }}
         tags: |
           type=semver,pattern={{raw}}
           type=ref,event=branch
