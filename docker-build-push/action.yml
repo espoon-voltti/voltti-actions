@@ -118,43 +118,6 @@ runs:
         BRANCH: ${{ github.head_ref || github.ref_name }}
 
     - name: Build
-      if: ${{ inputs.lint_command || inputs.test_command }}
-      uses: docker/build-push-action@v5
-      with:
-        context: ${{ inputs.path }}
-        push: false
-        pull: "${{ inputs.pull }}"
-        load: true
-        target: ${{ inputs.target }}
-        file: ${{ inputs.dockerfile }}
-        build-args: ${{ inputs.build-args }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        tags: |
-          ${{ steps.variables.outputs.image }}
-          ${{ steps.variables.outputs.branch_image }}
-
-    - name: Lint
-      if: ${{ inputs.lint_command }}
-      shell: bash
-      run: docker run --rm --entrypoint "" "${{ steps.variables.outputs.image }}" ${{ inputs.lint_command }} 2>&1 | tee lint-report.txt
-
-    - name: Test
-      if: ${{ inputs.test_command }}
-      shell: bash
-      run: |
-        docker run --rm --entrypoint "" "${{ steps.variables.outputs.image }}" ${{ inputs.test_command }} 2>&1 | tee test-report.txt
-
-    - name: Store test results
-      uses: actions/upload-artifact@v4
-      if: always() && (inputs.lint_command || inputs.test_command)
-      with:
-        name: test-results
-        path: "*-report.txt"
-        retention-days: 2
-
-    - name: Push
-      if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork && inputs.push }}
       uses: docker/build-push-action@v5
       with:
         context: ${{ inputs.path }}
