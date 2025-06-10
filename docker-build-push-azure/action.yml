@@ -1,0 +1,124 @@
+name: "Build and push docker"
+description: "Build and push docker image"
+
+inputs:
+  DOCKERHUB_USERNAME:
+    description: "Dockerhub username used to read public images"
+    required: true
+  DOCKERHUB_TOKEN:
+    description: "Dockerhub token used to read public images"
+    required: true
+
+  ACR_USER:
+    description: "ACR Username"
+    required: true
+  ACR_PASS:
+    description: "ACR Password"
+    required: true
+
+  registry:
+    description: "Image registry host"
+    required: true
+  name:
+    description: "Name of the image. Example evaka/image"
+    required: true
+  path:
+    description: "Docker context path"
+    default: "."
+    required: false
+  build-args:
+    description: "Docker build-args. See docker/build-push-action build-args"
+    required: false
+    default: ""
+  suffix:
+    description: "Tag suffix for images"
+    default: null
+  target:
+    description: "Docker target"
+    default: null
+  lint_command:
+    description: "Command used for linting. Example: yarn lint"
+    default: null
+  test_command:
+    description: "Command used for linting. Example: yarn test"
+    default: null
+  push:
+    description: "Push images to registry"
+    default: true
+  pull:
+    description: "Pull images on build"
+    default: "false"
+  load:
+    description: "Load docker image"
+    default: false
+  dockerfile:
+    description: "Dockerfile path"
+  platforms:
+    description: "Comma separated list of target platforms"
+    default: 'linux/amd64'
+  provenance:
+    description: "Set provenance for docker build"
+    default: false
+
+outputs:
+  image:
+    description: "Full image name with registry and tag"
+    value: ${{ steps.variables.outputs.image }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.DOCKERHUB_TOKEN }}
+
+    - name: Login to ACR
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.ACR_USER }}
+        password: ${{ inputs.ACR_PASS }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Set tag
+      if: startsWith(github.ref, 'refs/tags/v')
+      id: tag
+      shell: bash
+      run: |
+        echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Set variables
+      id: variables
+      shell: bash
+      run: |
+        BASE_NAME="${{ inputs.registry }}/${{ inputs.name }}"
+        BRANCH_TAG=$(echo "${BRANCH##*/}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+        echo "branch_image=${BASE_NAME}:${BRANCH_TAG}${{ inputs.suffix || '' }}" >> $GITHUB_OUTPUT
+        echo "image=${{ inputs.registry }}/${{ inputs.name }}:${{ steps.tag.outputs.name || github.sha }}${{ inputs.suffix || '' }}" >> $GITHUB_OUTPUT
+      env:
+        BRANCH: ${{ github.head_ref || github.ref_name }}
+
+    - name: Build
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.path }}
+        load: ${{ inputs.load }}
+        push: ${{ github.actor != 'dependabot[bot]' && inputs.push || 'false' }}
+        target: ${{ inputs.target }}
+        file: ${{ inputs.dockerfile }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: ${{ inputs.platforms }}
+        provenance: ${{ inputs.provenance }}
+        tags: |
+          ${{ steps.variables.outputs.image }}
+          ${{ steps.variables.outputs.branch_image }}
