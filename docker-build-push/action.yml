@@ -118,7 +118,7 @@ runs:
         BRANCH: ${{ github.head_ref || github.ref_name }}
 
     - name: Build
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}

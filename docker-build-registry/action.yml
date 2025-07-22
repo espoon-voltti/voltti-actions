@@ -103,7 +103,7 @@ runs:
         sudo tcpdump -i eth0 -w dump.pcap &
 
     - name: Build image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
