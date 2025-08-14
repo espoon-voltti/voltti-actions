@@ -123,6 +123,7 @@ runs:
         context: ${{ inputs.path }}
         load: ${{ inputs.load }}
         push: ${{ github.actor != 'dependabot[bot]' && inputs.push || 'false' }}
+        pull: ${{ inputs.pull }}
         target: ${{ inputs.target }}
         file: ${{ inputs.dockerfile }}
         build-args: ${{ inputs.build-args }}
