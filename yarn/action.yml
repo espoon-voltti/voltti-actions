@@ -42,30 +42,50 @@ runs:
         restore-keys:
           dependencies-
 
-    - name: Add .npmrc
+    - name: Add .yarnrc.yml or .npmrc
       shell: bash
       working-directory: ${{ inputs.path }}
       run: |
         rm -f .npmrc
-        if test -n "${{ inputs.FONTAWESOME_TOKEN }}"; then
-          cat << EOF >> .npmrc
+        if yarn --version | grep -q '^1\.'; then
+          echo "Detected yarn v1 => adding .npmrc"
+          if test -n "${{ inputs.FONTAWESOME_TOKEN }}"; then
+            cat << EOF >> .npmrc
         @fortawesome:registry=https://npm.fontawesome.com/
         //npm.fontawesome.com/:_authToken="${{ inputs.FONTAWESOME_TOKEN }}"
         EOF
-        fi
-        if test -n "${{ inputs.VERDACCIO_TOKEN }}"; then
-          cat << EOF >> .npmrc
+          fi
+          if test -n "${{ inputs.VERDACCIO_TOKEN }}"; then
+            cat << EOF >> .npmrc
         @voltti:registry=https://npm.sst.espoon-voltti.fi/
         //npm.sst.espoon-voltti.fi/:_authToken="${{ inputs.VERDACCIO_TOKEN }}"
         //npm.sst.espoon-voltti.fi/:always-auth=true
         EOF
-        fi
-        if test -n "${{ inputs.GITHUB_TOKEN }}"; then
-          cat << EOF >> .npmrc
+          fi
+          if test -n "${{ inputs.GITHUB_TOKEN }}"; then
+            cat << EOF >> .npmrc
         @espoon-voltti:registry=https://npm.pkg.github.com
         //npm.pkg.github.com/:always-auth=true
         //npm.pkg.github.com/:_authToken=${{ inputs.GITHUB_TOKEN }}
         EOF
+          fi
+        else
+          echo "Detected yarn v2 or later => adding .yarnrc.yml"
+          if test -n "${{ inputs.FONTAWESOME_TOKEN }}"; then
+            yarn config set npmScopes.fortawesome.npmRegistryServer "https://npm.fontawesome.com"
+            yarn config set npmScopes.fortawesome.npmAlwaysAuth true
+            yarn config set 'npmRegistries["https://npm.fontawesome.com"].npmAuthToken' "${{ inputs.FONTAWESOME_TOKEN }}"
+          fi
+          if test -n "${{ inputs.VERDACCIO_TOKEN }}"; then
+            yarn config set npmScopes.voltti.npmRegistryServer "https://npm.sst.espoon-voltti.fi"
+            yarn config set npmScopes.voltti.npmAlwaysAuth true
+            yarn config set 'npmRegistries["https://npm.sst.espoon-voltti.fi"].npmAuthToken' "${{ inputs.VERDACCIO_TOKEN }}"
+          fi
+          if test -n "${{ inputs.GITHUB_TOKEN }}"; then
+            yarn config set npmScopes.espoon-voltti.npmRegistryServer "https://npm.pkg.github.com"
+            yarn config set npmScopes.espoon-voltti.npmAlwaysAuth true
+            yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAuthToken' "${{ inputs.GITHUB_TOKEN }}"
+          fi
         fi
 
     - uses: actions/setup-node@v4
