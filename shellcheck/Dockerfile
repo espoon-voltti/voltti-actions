@@ -1,4 +1,4 @@
-FROM koalaman/shellcheck-alpine:v0.8.0
+FROM koalaman/shellcheck-alpine:v0.11.0
 
 RUN apk add --no-cache git
 
