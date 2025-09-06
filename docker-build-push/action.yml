@@ -83,7 +83,7 @@ runs:
 
     - name: Configure AWS credentials
       if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v5
       with:
         aws-region: ${{ inputs.AWS_REGION }}
         role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
