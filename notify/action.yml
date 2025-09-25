@@ -15,7 +15,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: slackapi/slack-github-action@v1.24.0
+    - uses: slackapi/slack-github-action@v2.1.1
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.webhook_url }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
