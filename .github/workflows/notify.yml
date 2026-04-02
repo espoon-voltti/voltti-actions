@@ -1,0 +1,20 @@
+name: Slack API Test
+
+on:
+  push:
+    paths:
+      - 'notify/**'
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./notify
+        with:
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          channel: '#infra-alerts'
+          message: voltti-actions/notify successfully updated
