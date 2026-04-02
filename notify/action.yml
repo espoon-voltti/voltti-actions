@@ -18,7 +18,7 @@ runs:
     - uses: slackapi/slack-github-action@v3.0.1
       with:
         webhook: ${{ inputs.webhook_url }}
-        webhook-type: INCOMING_WEBHOOK
+        webhook-type: incoming-webhook
         payload: |
           {
             "channel": "${{ inputs.channel }}",

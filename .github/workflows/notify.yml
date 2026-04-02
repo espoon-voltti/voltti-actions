@@ -4,9 +4,6 @@ on:
   push:
     paths:
       - 'notify/**'
-  pull_request:
-    paths:
-      - 'notify/**'
 
 permissions:
   contents: read
