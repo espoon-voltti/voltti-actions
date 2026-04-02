@@ -16,42 +16,41 @@ runs:
   using: "composite"
   steps:
     - uses: slackapi/slack-github-action@v3.0.1
-      env:
-        SLACK_WEBHOOK_URL: ${{ inputs.webhook_url }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
       with:
-          payload: |
-            {
-              "channel": "${{ inputs.channel }}",
-              "text": "${{ inputs.message }} - <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.repository }} - ${{ github.ref_name }}>",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ inputs.message }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Project:*\n${{ github.repository }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch*:\n${{ github.ref_name }}"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow>"
-                  }
+        webhook: ${{ inputs.webhook_url }}
+        webhook-type: INCOMING_WEBHOOK
+        payload: |
+          {
+            "channel": "${{ inputs.channel }}",
+            "text": "${{ inputs.message }} - <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.repository }} - ${{ github.ref_name }}>",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "${{ inputs.message }}",
+                  "emoji": true
                 }
-              ]
-            }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Project:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch*:\n${{ github.ref_name }}"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow>"
+                }
+              }
+            ]
+          }
