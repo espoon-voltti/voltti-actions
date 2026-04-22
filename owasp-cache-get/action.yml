@@ -1,0 +1,138 @@
+name: "Load OWASP cache"
+description: "Load OWASP dependency-check cache from voltti-owasp releases"
+
+inputs:
+  gh_token:
+    description: "Token for github actions (needs read access to voltti-owasp)"
+    required: true
+  t_debug:
+    description: "Print debug logging"
+    required: false
+    default: "false"
+  t_asset_name:
+    description: "Asset name"
+    required: false
+    default: "owasp-nightly.tgz"
+  t_tag_name:
+    description: "Tag name"
+    required: false
+    default: "owasp-nightly"
+  t_repository:
+    description: "Repository"
+    required: false
+    default: "espoon-voltti/voltti-owasp"
+  t_cache_base:
+    description: "Directory to unpack the cache package"
+    required: false
+    default: "~/.m2/repository/org/owasp/"
+  t_cache_dir:
+    description: "Directory package from the base"
+    required: false
+    default: "dependency-check-data"
+  t_last_update_file:
+    description: "File to store last update timestamp"
+    required: false
+    default: "gh_last_update.txt"
+  t_warn_cache_age:
+    description: "How many hours cache should be at max"
+    required: false
+    default: "25"
+  fail_on_miss:
+    description: "Fail the action if cache is not found"
+    required: false
+    default: "false"
+
+outputs:
+  release-id:
+    description: "ID of the release"
+    value: ${{ steps.get_release.outputs.RELEASE_ID }}
+  cache-hit:
+    description: "Did we find the cache"
+    value: ${{ steps.get_asset.outputs.HIT }}
+  cache-age:
+    description: "Age of the last cache update in hours"
+    value: ${{ steps.get_asset.outputs.AGE }}
+  cache-ts:
+    description: "Timestamp of the last cache update"
+    value: ${{ steps.get_asset.outputs.TS }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for existing release
+      id: get_release
+      shell: bash
+      run: |
+        FILE_RELEASE_GET=file_release_get.json
+        curl -sL \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ inputs.gh_token }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          -XGET "${GITHUB_API_URL}/repos/${{ inputs.t_repository }}/releases/tags/${{ inputs.t_tag_name }}" > $FILE_RELEASE_GET
+        if [[ "${{ inputs.t_debug }}" == 'true' ]]; then
+          cat $FILE_RELEASE_GET
+        fi
+        RELEASE_ID=$(cat $FILE_RELEASE_GET | jq -r '.id')
+        if [[ ! -z "$RELEASE_ID" ]] && [[ "$RELEASE_ID" != 'null' ]]; then
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_OUTPUT
+          ASSET_ID=$(cat $FILE_RELEASE_GET | jq -r '.assets[] | select(.name=="${{ inputs.t_asset_name }}") | .id' || echo '')
+          echo "ASSET_ID=$ASSET_ID" >> $GITHUB_OUTPUT
+        fi
+        rm $FILE_RELEASE_GET
+
+    - name: Fetch OWASP cache
+      if: ${{ steps.get_release.outputs.ASSET_ID != '' }}
+      id: get_asset
+      shell: bash
+      run: |
+        echo "Downloading asset with id ${{ steps.get_release.outputs.ASSET_ID }}"
+        curl -sL -o "downloaded-${{ inputs.t_asset_name }}" \
+          -H "Accept: application/octet-stream" \
+          -H "Authorization: Bearer ${{ inputs.gh_token }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          -XGET "${GITHUB_API_URL}/repos/${{ inputs.t_repository }}/releases/assets/${{ steps.get_release.outputs.ASSET_ID }}"
+
+        if [[ -f "downloaded-${{ inputs.t_asset_name }}" ]]; then
+          echo "Extracting owasp cache"
+          mkdir -p ${{ inputs.t_cache_base }}
+          tar -xzf "downloaded-${{ inputs.t_asset_name }}" -C ${{ inputs.t_cache_base }}
+          rm "downloaded-${{ inputs.t_asset_name }}"
+          if [[ -f ${{ inputs.t_cache_base }}/${{ inputs.t_cache_dir }}/${{ inputs.t_last_update_file }} ]]; then
+            TS=$(< ${{ inputs.t_cache_base }}/${{ inputs.t_cache_dir }}/${{ inputs.t_last_update_file }})
+            THEN=$(date --date="$TS" +%s)
+            NOW=$(date +%s)
+            HOURS=$(((NOW-THEN)/3600))
+            echo "TS: $TS; AGE: $HOURS hours"
+            echo "TS=$TS" >> $GITHUB_OUTPUT
+            echo "AGE=$HOURS" >> $GITHUB_OUTPUT
+            if [[ "$HOURS" -gt ${{ inputs.t_warn_cache_age }} ]]; then
+              echo "::warning title=OWASP cache expired::Cache was created $HOURS hours ago when the limit is set to ${{ inputs.t_warn_cache_age }} hours"
+            fi
+          else
+            echo "TS=unknown" >> $GITHUB_OUTPUT
+            echo "AGE=unknown" >> $GITHUB_OUTPUT
+          fi
+          echo "HIT=true" >> $GITHUB_OUTPUT
+        else
+          echo "TS=unknown" >> $GITHUB_OUTPUT
+          echo "AGE=unknown" >> $GITHUB_OUTPUT
+          echo "HIT=false" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.fail_on_miss }}" == 'true' ]]; then
+            echo "::error title=Missing OWASP cache::Failed to download cache asset"
+            exit 1
+          else
+            echo "::warning title=Missing OWASP cache::Failed to download cache asset. OWASP scan might take a long time or even fail"
+          fi
+        fi
+
+    - name: Fail if cache not found
+      if: ${{ steps.get_release.outputs.ASSET_ID == '' }}
+      id: warn_asset
+      shell: bash
+      run: |
+        if [[ "${{ inputs.fail_on_miss }}" == 'true' ]]; then
+          echo "::error title=Missing OWASP cache::Cache asset was not found"
+          exit 1
+        else
+          echo "::warning title=Missing OWASP cache::Cache asset was not found. OWASP scan might take a long time or even fail"
+        fi
