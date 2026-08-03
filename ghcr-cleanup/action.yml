@@ -1,0 +1,67 @@
+name: "GHCR cleanup"
+description: >-
+  Delete untagged GHCR container versions (and optionally keep only the newest
+  N), tolerating the 404s that actions/delete-package-versions fails on.
+
+inputs:
+  package:
+    description: "Container package name, e.g. evaka/frontend"
+    required: true
+  keep:
+    description: >-
+      Keep the newest N versions by creation time; older ones are deleted along
+      with all untagged versions. 0 (default) deletes untagged versions only.
+    required: false
+    default: "0"
+  owner:
+    description: "Package owner (organisation)."
+    required: false
+    default: "espoon-voltti"
+  token:
+    description: "Token with 'packages: write' on the owner."
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Clean up ${{ inputs.package }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        OWNER: ${{ inputs.owner }}
+        PACKAGE: ${{ inputs.package }}
+        KEEP: ${{ inputs.keep }}
+      run: |
+        set -euo pipefail
+        base="/orgs/${OWNER}/packages/container/${PACKAGE//\//%2F}/versions"
+
+        # Build the delete set from a single global listing (sorted newest-first
+        # so index 0 is the freshest): every untagged version, plus - when KEEP
+        # is > 0 - everything past the newest KEEP. Index-based selection avoids
+        # a negative-slice edge case when there are fewer than KEEP versions.
+        # The listing is captured separately so a failed API call fails the job
+        # instead of being swallowed by a process substitution (silent green).
+        if ! raw=$(gh api --paginate --slurp "${base}?per_page=100&state=active" \
+          | jq -r --argjson keep "$KEEP" '
+              [.[][]] | sort_by(.created_at) | reverse | to_entries
+              | map(select(
+                  ((.value.metadata.container.tags // []) | length == 0)
+                  or ($keep > 0 and .key >= $keep)))
+              | .[].value.id'); then
+          echo "::error::failed to list versions for ${PACKAGE}"; exit 1
+        fi
+        mapfile -t ids < <(printf '%s\n' "$raw" | grep -E '^[0-9]+$' || true)
+        echo "versions to delete for ${PACKAGE} (keep=${KEEP}): ${#ids[@]}"
+
+        deleted=0
+        for id in "${ids[@]}"; do
+          if out=$(gh api -X DELETE "${base}/${id}" 2>&1); then
+            deleted=$((deleted + 1))
+          elif printf '%s' "$out" | grep -q "HTTP 404"; then
+            : # GHCR prunes sibling manifests, so a listed version can be gone
+          else
+            echo "::error::delete failed for version $id: $out"; exit 1
+          fi
+        done
+        echo "deleted $deleted version(s) for ${PACKAGE}"
