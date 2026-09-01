@@ -49,21 +49,21 @@ runs:
         sudo sh -c "echo 1 > /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal"
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v4
+      uses: docker/setup-buildx-action@v4.3.0
 
     - name: Login to Docker Hub
       # Skip when no credentials are available (e.g. Dependabot or fork PRs,
       # which don't get repository secrets). The build proceeds with anonymous
       # Docker Hub pulls instead of failing on an empty username/password.
       if: ${{ inputs.DOCKERHUB == 'true' && inputs.DOCKERHUB_USERNAME != '' }}
-      uses: docker/login-action@v4
+      uses: docker/login-action@v4.6.0
       with:
         username: ${{ inputs.DOCKERHUB_USERNAME }}
         password: ${{ inputs.DOCKERHUB_TOKEN }}
 
     - name: Configure AWS credentials
       if: ${{ inputs.AWS == 'true' }}
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@v6.2.4
       with:
         aws-region: ${{ inputs.AWS_REGION }}
         role-to-assume: ${{ inputs.AWS_ROLE }}
@@ -73,13 +73,13 @@ runs:
     - name: Login to Amazon ECR
       if: ${{ inputs.AWS == 'true' }}
       id: ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      uses: aws-actions/amazon-ecr-login@v2.1.7
       with:
         mask-password: 'true'
 
     - name: Login to GitHub Container Registry
       if: ${{ inputs.GHCR == 'true' }}
-      uses: docker/login-action@v4
+      uses: docker/login-action@v4.6.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
